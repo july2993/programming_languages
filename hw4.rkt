@@ -30,18 +30,17 @@
                [#t (cons x (lambda () (f (+ x 1))))]))])
   (f 1)))
 
-
 (define (dan-then-dog)
  (letrec ([f (lambda (x)
-              (cond [(= x 1) (cons "dan.jpg" (lambda () (f (0))))]
-               [(= x 0) (cons "dog.jpg" (lambda () (f (1))))])
+              (cond [(= x 1) (cons "dan.jpg" (lambda () (f 0)))]
+               [(= x 0) (cons "dog.jpg" (lambda () (f 1)))])
              )])
-  (f 1)))
+   (f 1)))
 
 (define (stream-add-zero s)
  (letrec ([f (lambda (s)
   (let ([pr (s)])
-   (cons (cons 0 (car pr)) (lambda () (cdr pr)))
+   (cons (cons 0 (car pr)) (lambda () (f (cdr pr))))
  ))])
   (lambda () (f s))
  )
@@ -59,7 +58,7 @@
  (letrec ([f (lambda (v vec n)
               (cond [(>= n (vector-length vec)) #f]
                     [(not (pair? (vector-ref vec n))) (f v vec (+ n 1))]
-               [(= (car (vector-ref vec n)) v) (vector-ref vec n)]
+               [(equal? (car (vector-ref vec n)) v) (vector-ref vec n)]
                [#t (f v vec (+ n 1))]))])
   (f v vec 0)))
 
@@ -69,7 +68,7 @@
          [f (lambda (v)
              (let ([ans (vector-assoc v memo)])
               (if ans
-               (cdr ans)
+               ans
                (let ([new-ans (assoc v xs)])
                 (begin
                  (vector-set! memo idx new-ans)
