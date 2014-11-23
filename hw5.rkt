@@ -22,22 +22,22 @@
 
 (define (racketlist->mupllist xs)
   (if (null? xs)
-   (aunit)
-   (apair (car xs) (racketlist->mupllist (cdr xs))
-  )))
+      (aunit)
+      (apair (car xs) (racketlist->mupllist (cdr xs))
+             )))
 
 (define (mupllist->racketlist xs)
- (if (aunit? xs)
-  null
-  (cons (apair-e1 xs) (mupllist->racketlist (apair-e2 xs)))
- ))
+  (if (aunit? xs)
+      null
+      (cons (apair-e1 xs) (mupllist->racketlist (apair-e2 xs)))
+      ))
 
 ;; Problem 2
 
 ;; lookup a variable in an environment
 ;; Do NOT change this function
 (define (envlookup env str)
-  (cond [(null? env) (error "unbound variable during evaluation" str)]
+  (cond [(null? env) (error "unbound variable during evaluation" str env)]
         [(equal? (car (car env)) str) (cdr (car env))]
         [#t (envlookup (cdr env) str)]))
 
@@ -59,64 +59,71 @@
         ;; CHANGE add more cases here
         [(int? e) e]
         [(ifgreater? e)
-          (let ([v1 (eval-under-env (ifgreater-e1 e) env)]
-                [v2 (eval-under-env (ifgreater-e2 e) env)])
-            (if (and (int? v1)
-                     (int? v2))
-                (if (> (int-num v1) (int-num v2))
-                 (eval-under-env (ifgreater-e3 e) env)
-                 (eval-under-env (ifgreater-e4 e) env))
-                (error "ifgreater applied to nom-number")))]
+         (let ([v1 (eval-under-env (ifgreater-e1 e) env)]
+               [v2 (eval-under-env (ifgreater-e2 e) env)])
+           (if (and (int? v1)
+                    (int? v2))
+               (if (> (int-num v1) (int-num v2))
+                   (eval-under-env (ifgreater-e3 e) env)
+                   (eval-under-env (ifgreater-e4 e) env))
+               (error "ifgreater applied to nom-number")))]
         [(fst? e)
-          (if (apair? e)
-           (eval-under-env (apair-e1 (fst-e e)) env)
-           (error "FST applied to non-pair"))]
-
-        [(snd? e) (cond [(apair? (snd-e e))  (eval-under-env (apair-e2 (snd-e e)) env)]
-           [#t (error "SND applied to non-pair")])]
-
-        [(aunit? e) (int 1)]
-        [(apair? e) (apair (eval-under-env (apair-e1) env) (eval-under-env (apair-e2) env))]
+         (let ([pr (eval-under-env (fst-e e) env)])
+           (if (apair? pr)
+               (eval-under-env (apair-e1 pr) env)
+               (error "FST applied to non-pair" e pr)))]
+        
+        [(snd? e)
+         (let ([pr (eval-under-env (snd-e e) env)])
+           (if (apair? pr)
+               (eval-under-env (apair-e2 pr) env)
+               (error "SND applied to non-pair" e pr)))]
+        
+        ;;[(snd? e) (cond [(apair? (snd-e e))  (eval-under-env (apair-e2 (snd-e e)) env)]
+        ;;   [#t (error "SND applied to non-pair")])]
+        
+        [(aunit? e) e]
+        [(apair? e) (apair (eval-under-env (apair-e1 e) env) (eval-under-env (apair-e2 e) env))]
         [(isaunit? e)
-          (if (aunit? (eval-under-env (isaunit-e e) env))
-           (int 1)
-           (int 0))]
-
+         (if (aunit? (eval-under-env (isaunit-e e) env))
+             (int 1)
+             (int 0))]
+        
         [(mlet? e)
-          (let ([val (eval-under-env (mlet-e e) env)])
-            (eval-under-env (mlet-body e) (cons (cons (mlet-var e) val) env)))]
-
+         (let ([val (eval-under-env (mlet-e e) env)])
+           (eval-under-env (mlet-body e) (cons (cons (mlet-var e) val) env)))]
+        
         [(closure? e) e]
-
+        
         [(call? e)
-          (let ([mclosure (eval-under-env (call-funexp e) env)]
-                [arg (eval-under-env (call-actual e) env)])
+         (let ([mclosure (eval-under-env (call-funexp e) env)]
+               [arg (eval-under-env (call-actual e) env)])
            (if (closure? mclosure)
-             (let* ([mfun (closure-fun mclosure)]
-                    [mclosure-env (closure-env mclosure)]
-                    [body (fun-body mfun)]
-                    [forma (fun-formal mfun)])
-               (if (string? (fun-nameopt mfun))
-                 (eval-under-env (mlet forma arg (mlet (fun-nameopt mfun) mfun body))  env)
-                 (eval-under-env (mlet forma arg body) env)))
-             (error "vall applied to non-closour")))]
-
+               (let* ([mfun (closure-fun mclosure)]
+                      [mclosure-env (closure-env mclosure)]
+                      [body (fun-body mfun)]
+                      [forma (fun-formal mfun)])
+                 (if (string? (fun-nameopt mfun))
+                     (eval-under-env (mlet forma arg (mlet (fun-nameopt mfun) mclosure body))  mclosure-env)
+                     (eval-under-env (mlet forma arg body) mclosure-env)))
+               (error "vall applied to non-closour")))]
+        
         [(fun? e) (closure env e)]
-
+        
         [#t (error (format "bad MUPL expression: ~v" e))]))
 
 ;; Do NOT change
 (define (eval-exp e)
   (eval-under-env e null))
-        
+
 ;; Problem 3
 
 (define (ifaunit e1 e2 e3) (ifgreater (isaunit e1) (int 0) e2 e3))
 
 (define (mlet* lstlst e2) 
   (if (null? lstlst)
-    e2
-    (mlet (car (car lstlst)) (cdr (car lstlst)) (mlet* (cdr lstlst) e2))))
+      e2
+      (mlet (car (car lstlst)) (cdr (car lstlst)) (mlet* (cdr lstlst) e2))))
 
 (define (ifeq e1 e2 e3 e4)
   (let ([v1 (var "_x")]
@@ -127,14 +134,15 @@
 
 ;; Problem 4
 
-;;(define mupl-map
-;;  (fun #f "f" 
-;;    (fun "mfun" "xs"
-;;     (ifaunit (var "xs") (aunit) (apair (call (var "mfun") (fst (var "xs"))) (call (var "f") (snd (var "xs")) )))) ))
+(define mupl-map
+  (fun #f "f" 
+       (fun "mfun" "xs"
+            (ifaunit (var "xs") (aunit) (apair (call (var "f") (fst (var "xs"))) (call (var "mfun") (snd (var "xs")) )))) ))
 
-;;(define mupl-mapAddN 
- ;; (mlet "map" mupl-map
-  ;;      "CHANGE (notice map is now in MUPL scope)"))
+(define mupl-mapAddN 
+  (mlet "map" mupl-map
+        (fun #f "add" (call (var "map") (fun #f "x" (add (var "x") (var "add")))))
+        ))
 
 ;; Challenge Problem
 
